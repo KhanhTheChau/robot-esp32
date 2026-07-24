@@ -1,72 +1,50 @@
-# Kiến trúc phần mềm: ESP32 Audio POC
+﻿# Kiến trúc Hệ thống Voice Assistant (ESP32-S3 + INMP441 + Gemini)
 
-Dự án này được thiết kế và triển khai dựa trên **Clean Architecture**, **SOLID**, và **Dependency Injection (DI)**, áp dụng các kỹ thuật Object-Oriented Programming (OOP) hiện đại vào hệ thống nhúng (ESP32/Arduino Framework).
+Tài liệu này lưu trữ toàn bộ kiến thức kỹ thuật quan trọng nhất về module Voice, được tinh chỉnh sau rất nhiều lần thử nghiệm thực tế. **Đây là bản thiết kế chuẩn mực (Golden Reference) dùng để phục hồi nếu hệ thống bị lỗi trong tương lai.**
 
-## 1. Tổng quan Kiến trúc (Clean Architecture)
+## 1. Sơ đồ luồng dữ liệu (Data Flow)
 
-Dự án loại bỏ hoàn toàn cách viết code kiểu "spaghetti" (gom toàn bộ logic vào `setup()` và `loop()` trong file `.ino`). Thay vào đó, hệ thống được chia thành nhiều lớp (layers) và module độc lập:
+1. **Hardware (INMP441):** Thu thập âm thanh qua I2S (24-bit MSB-aligned).
+2. **ESP32-S3 (AudioRecorder):** Giao tiếp I2S bằng DMA, cấu hình tự động cắt 16-bit MSB, đưa vào buffer.
+3. **ESP32-S3 (HttpClient):** Nén âm thanh dạng thô (PCM 16-bit, 16kHz, Mono) và POST lên Server qua mạng WiFi.
+4. **Python Server:** Nhận dữ liệu, đóng gói thành file `.wav` chuẩn để lưu trữ và nạp vào Google Speech-To-Text API.
+5. **Gemini AI:** Nhận văn bản từ Google STT, sinh câu trả lời ngắn gọn (phù hợp với thiết bị nhúng).
+6. **ESP32-S3 (DisplayManager):** Parse JSON trả về, render văn bản của Gemini lên màn hình OLED 0.96".
 
-- **Core Layer:** Chứa lõi điều phối (`Application`) và các Interface (`ILogger`, `IWiFiManager`, `IDisplay`,...). Lớp này không phụ thuộc vào bất kỳ thư viện phần cứng cụ thể nào (ngoại trừ các kiểu dữ liệu chuẩn).
-- **Service Layer:** (`VoiceService`) Chứa Business Logic chính. Ở đây là quy trình: "Ghi âm -> Gửi lên HTTP Server -> Nhận phản hồi". Service layer điều phối các interface của Network và Audio.
-- **Hardware/Infrastructure Layer:** (`WiFiManager`, `DisplayManager`, `ButtonManager`, `AudioRecorder`, `HttpClient`). Đây là nơi duy nhất import và tương tác trực tiếp với các thư viện phần cứng của ESP32 (`WiFi.h`, `Adafruit_SSD1306.h`, `driver/i2s.h`, `HTTPClient.h`).
+## 2. Các Bài học Kỹ thuật Sâu sắc (Tránh Lối Mòn)
 
-## 2. Dependency Injection (DI)
-
-Không một class nào trong hệ thống tự khởi tạo (dùng toán tử `new` hoặc gọi hàm khởi tạo) các dependencies của nó.
-Mọi dependency đều được truyền vào (inject) thông qua constructor.
-
+### A. Lỗi xung đột Nút BOOT và Xung nhịp I2S (MCLK Bug)
+- **Triệu chứng:** Khi khởi tạo `i2s_driver_install` trên ESP32-S3, mạch liên tục bị crash "Connecting..." hoặc tự động nhảy vào chế độ "Recording" dù người dùng không bấm nút.
+- **Nguyên nhân:** Driver I2S mặc định của Espressif (ESP-IDF) tự động xuất tín hiệu xung nhịp Master Clock (MCLK) ra chân `GPIO 0`. Chân này lại chính là chân của nút BOOT. Tín hiệu xung nhịp cao tầng làm nhiễu tín hiệu kéo-thả của nút bấm.
+- **Giải pháp dứt điểm:** Phải ép `mck_io_num` về -1 (không sử dụng).
 ```cpp
-// Ví dụ Dependency Injection trong main.ino
-Logger logger;
-AudioRecorder audioRecorder(logger);
-WiFiManager wifiManager(logger);
-HttpClient httpClient(logger, wifiManager);
-
-VoiceService voiceService(logger, audioRecorder, httpClient);
+#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 4, 0))
+    pin_config.mck_io_num = I2S_PIN_NO_CHANGE;
+#endif
 ```
 
-Việc này giúp:
-- **Low Coupling (Khớp nối lỏng):** Các module không bị dính chặt vào nhau.
-- **Testability:** Có thể dễ dàng thay thế `AudioRecorder` thật bằng một `MockAudioRecorder` trong lúc Unit Test.
+### B. Lỗi Vỡ tiếng / Nhiễu tĩnh điện (Audio Clipping / Static Noise)
+- **Triệu chứng:** File âm thanh thu được nghe toàn tiếng xèo xèo, nổ lụp bụp, Google STT không thể nhận dạng.
+- **Phân tích:** 
+  - INMP441 trả về dữ liệu 24-bit được "chèn" vào trong khung truyền 32-bit (dữ liệu nằm ở dải MSB - các bit cao nhất).
+  - Lúc đầu chúng ta cố tình cấu hình I2S đọc dạng 32-bit, sau đó dùng thuật toán dịch bit thủ công (`>> 11`, `>> 13`) để giảm xuống 16-bit và tăng âm lượng. Phép toán thủ công này tạo ra hệ số nhân âm lượng khổng lồ (Gain x8, x32), khiến biên độ sóng âm thanh chạm trần (-32768 đến 32767) dẫn đến Clipping kịch liệt.
+- **Giải pháp dứt điểm (Theo chuẩn DroneBotWorkshop):**
+  - Không cần tính toán thủ công. Trình điều khiển DMA của ESP32 cực kỳ thông minh.
+  - Cấu hình chuẩn: `bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT`. Phần cứng ESP32 sẽ tự động bóc tách đúng 16 bit MSB từ tín hiệu 24-bit của INMP441, nạp trực tiếp vào biến `int16_t` với chất lượng cực kì trong trẻo và nguyên bản (Gain 1:1).
 
-## 3. SOLID Principles
+### C. Lỗi Kênh Trái/Phải (L/R Channel)
+- **Chuẩn bị:** Chân L/R của INMP441 PHẢI được nối với `GND`.
+- **Cấu hình:** `channel_format = I2S_CHANNEL_FMT_ONLY_LEFT`.
+- Nếu bỏ lửng chân L/R (floating), tín hiệu sẽ bị nhiễu dải điện một chiều (DC Offset) khổng lồ, khiến tín hiệu âm thanh bị ép xuống đáy -20000.
 
-- **Single Responsibility Principle (SRP):** 
-  - `Logger`: Chỉ làm duy nhất một việc là in log ra Serial. Là module duy nhất gọi `Serial.print`.
-  - `DisplayManager`: Chỉ chịu trách nhiệm điều khiển OLED.
-  - `HttpClient`: Chỉ tạo request, gửi data và parse JSON.
-- **Open/Closed Principle (OCP):**
-  - Hệ thống dễ dàng mở rộng. Ví dụ muốn thêm tính năng gửi qua MQTT thay vì HTTP, ta chỉ cần tạo `MqttClient` implement một interface chung mà không phải sửa `VoiceService`.
-- **Liskov Substitution Principle (LSP):**
-  - `Application` sử dụng con trỏ/reference đến `IDisplay`. Ta có thể thay thế `DisplayManager` (dùng SSD1306) bằng `LcdDisplayManager` (dùng LCD 16x2) mà hệ thống vẫn chạy bình thường.
-- **Interface Segregation Principle (ISP):**
-  - Các interfaces được chia nhỏ và cụ thể: `IWiFiManager`, `IButton`, `IAudioRecorder`. Không có interface nào "ôm đồm" quá nhiều chức năng.
-- **Dependency Inversion Principle (DIP):**
-  - Các module bậc cao (`Application`, `VoiceService`) không phụ thuộc vào các module bậc thấp (`DisplayManager`, `WiFiManager`). Cả hai đều phụ thuộc vào Abstractions (Interfaces).
+## 3. Cấu trúc Source Code ESP32
 
-## 4. Quản lý Bộ nhớ (RAII)
+- `src/audio/AudioRecorder.cpp`: Trái tim của hệ thống I2S. Nơi thiết lập DMA và giao tiếp với Micro.
+- `src/button/ButtonManager.cpp`: Xử lý chống dội phím (Debounce) cho nút bấm BOOT (GPIO 0).
+- `src/network/HttpClient.cpp`: Xử lý gửi HTTP POST raw binary (PCM) tới Server Python mà không cần đóng gói Wav Header (Wav Header được ráp tại Python để tiết kiệm RAM cho ESP32).
+- `src/display/DisplayManager.cpp`: Giao tiếp I2C với OLED (GPIO 11, GPIO 12).
+- `src/services/VoiceService.cpp`: State Machine (Trạng thái) kết nối toàn bộ quy trình: Bấm nút -> Thu âm -> Gửi mạng -> Hiển thị kết quả.
 
-ESP32 có hạn chế nghiêm ngặt về RAM (đặc biệt là dung lượng Stack ~8KB). Do cấu hình POC yêu cầu lưu trữ âm thanh PCM lên đến 96KB (16kHz, 16bit, 3 giây), việc sử dụng Stack là không thể.
+## 4. Phục hồi và Phát triển
+Nếu trong tương lai hệ thống âm thanh bị hỏng do cập nhật Core Arduino hoặc thay đổi vi điều khiển, hãy đối chiếu các thông số I2S trong `AudioRecorder.cpp` với tài liệu này. Đừng cố gắng dịch bit thủ công (Bit-shifting) trừ khi bạn thực sự phải giao tiếp bằng `I2S_BITS_PER_SAMPLE_32BIT` (chỉ dùng khi dùng các thư viện DSP chuyên sâu).
 
-Tuy nhiên, nguyên tắc thiết kế cấm sử dụng `malloc` và `free`. Do đó, tài nguyên vùng nhớ Heap được quản lý tự động qua cơ chế **RAII** (Resource Acquisition Is Initialization) bằng việc sử dụng `std::vector<uint8_t>`.
-- Bộ nhớ tự động được giải phóng hoặc quản lý vòng đời khi `std::vector` bị hủy.
-- Khắc phục nguy cơ Memory Leak thường thấy trong C.
-
-## 5. Cấu trúc Thư mục
-
-- `config/`: Cấu hình hệ thống (Pin, WiFi, Baudrate).
-- `models/`: Các Data struct/class (VD: `VoiceResult` trả về từ HTTP).
-- `core/`: Giao diện (Interfaces), Logger, và trình điều phối Application.
-- `wifi/`, `network/`: Quản lý kết nối mạng và giao thức truyền tải.
-- `display/`, `button/`, `audio/`: Tương tác ngoại vi phần cứng.
-- `services/`: Business Logic.
-
-## 6. Luồng Hoạt động (Workflow)
-
-1. `main.ino` thiết lập toàn bộ sơ đồ DI.
-2. `app.begin()` kích hoạt kết nối WiFi, OLED, và I2S.
-3. `app.loop()` duy trì WiFi keep-alive và đọc trạng thái nút nhấn.
-4. Khi nút nhấn được kích hoạt (GPIO 0 kéo xuống mức LOW), `app` gọi `voiceService.processVoice()`.
-5. `VoiceService` ra lệnh `recorder` thu âm, trích xuất audio buffer, truyền vào `httpClient.sendAudio()`.
-6. `HttpClient` gửi multipart/raw data, parse kết quả JSON trả về object `VoiceResult`.
-7. `Application` nhận kết quả từ Service và hiển thị lên màn hình OLED.
