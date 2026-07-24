@@ -1,4 +1,4 @@
-#ifndef VOICE_SERVICE_H
+﻿#ifndef VOICE_SERVICE_H
 #define VOICE_SERVICE_H
 
 #include "../core/ILogger.h"
@@ -13,8 +13,8 @@ public:
 
     void begin();
     
-    // Ghi âm và upload
-    VoiceResult processVoice();
+    void startRecording();
+    VoiceResult stopAndUpload();
 
 private:
     ILogger& logger;

@@ -1,4 +1,4 @@
-﻿#ifndef APP_CONFIG_H
+#ifndef APP_CONFIG_H
 #define APP_CONFIG_H
 
 #include <Arduino.h>
@@ -23,7 +23,7 @@ namespace AppConfig
 
     // API Server url (Máy tính chạy server.py phải cùng mạng WiFi với mạch)
     // Sửa YOUR_COMPUTER_IP thành IP LAN của máy tính (ví dụ: 192.168.1.10)
-    constexpr const char* VOICE_API_URL = "http://YOUR_COMPUTER_IP:5000/upload";
+    constexpr const char* VOICE_API_URL = "http://192.168.1.6:5000/upload";
 }
 
 #endif // APP_CONFIG_H

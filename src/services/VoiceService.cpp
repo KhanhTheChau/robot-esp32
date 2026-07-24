@@ -9,19 +9,20 @@ VoiceService::VoiceService(ILogger& logger, IAudioRecorder& recorder, IHttpClien
 void VoiceService::begin()
 {
     logger.info("VoiceService::begin()");
+    recorder.begin();
 }
 
-VoiceResult VoiceService::processVoice()
+void VoiceService::startRecording()
+{
+    logger.info("Starting voice recording...");
+    recorder.startRecording();
+}
+
+VoiceResult VoiceService::stopAndUpload()
 {
     VoiceResult result;
     
-    logger.info("Starting voice processing...");
-    
-    recorder.startRecording();
-    
-    // Thu âm 3 giây (hoặc có thể để UI hiển thị và dừng sau). Ở POC ta delay cứng 3 giây để test.
-    delay(3000); 
-    
+    logger.info("Stopping recording and starting upload...");
     recorder.stopRecording();
     
     size_t dataSize = recorder.getAudioBufferSize();
@@ -30,6 +31,8 @@ VoiceResult VoiceService::processVoice()
     if (dataSize == 0 || audioData == nullptr)
     {
         logger.error("No audio data recorded.");
+        result.success = false;
+        result.text = "No audio";
         return result;
     }
 
@@ -44,3 +47,4 @@ VoiceResult VoiceService::processVoice()
 
     return result;
 }
+

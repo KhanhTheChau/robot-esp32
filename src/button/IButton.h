@@ -1,4 +1,4 @@
-#ifndef IBUTTON_H
+﻿#ifndef IBUTTON_H
 #define IBUTTON_H
 
 class IButton
@@ -11,6 +11,9 @@ public:
     
     // Trả về true nếu nút vừa được nhấn (chỉ trả về true 1 lần cho 1 lần nhấn)
     virtual bool isPressed() = 0;
+
+    // Trả về true nếu nút đang được giữ
+    virtual bool isHeld() = 0;
 };
 
 #endif // IBUTTON_H

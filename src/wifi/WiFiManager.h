@@ -22,7 +22,7 @@ private:
     unsigned long reconnectTimer;
     static constexpr unsigned long RECONNECT_INTERVAL_MS = 5000;
     
-    char ipBuffer[16];
+    mutable char ipBuffer[16];
 
     void connect();
 };

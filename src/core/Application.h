@@ -1,4 +1,4 @@
-#ifndef APPLICATION_H
+﻿#ifndef APPLICATION_H
 #define APPLICATION_H
 
 #include "ILogger.h"
@@ -27,6 +27,13 @@ private:
     IDisplay& display;
     IButton& button;
     VoiceService& voice;
+
+    enum class AppState {
+        IDLE,
+        RECORDING,
+        PROCESSING
+    };
+    AppState currentState;
 
     void updateDisplayStatus();
 };

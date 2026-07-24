@@ -1,4 +1,4 @@
-#ifndef BUTTON_MANAGER_H
+﻿#ifndef BUTTON_MANAGER_H
 #define BUTTON_MANAGER_H
 
 #include "IButton.h"
@@ -14,6 +14,7 @@ public:
     void begin() override;
     void loop() override;
     bool isPressed() override;
+    bool isHeld() override;
 
 private:
     ILogger& logger;

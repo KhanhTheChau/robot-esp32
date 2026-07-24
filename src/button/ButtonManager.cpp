@@ -1,4 +1,4 @@
-#include "ButtonManager.h"
+﻿#include "ButtonManager.h"
 
 ButtonManager::ButtonManager(ILogger& logger, uint8_t pin)
     : logger(logger), pin(pin), lastState(HIGH), currentState(HIGH),
@@ -50,3 +50,9 @@ bool ButtonManager::isPressed()
     }
     return false;
 }
+
+bool ButtonManager::isHeld()
+{
+    return (currentState == LOW);
+}
+
