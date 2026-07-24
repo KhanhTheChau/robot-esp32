@@ -1,4 +1,4 @@
-#ifndef SECRETS_H
+﻿#ifndef SECRETS_H
 #define SECRETS_H
 
 namespace Secrets
