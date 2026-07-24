@@ -1,4 +1,5 @@
-#include "DisplayManager.h"
+﻿#include "DisplayManager.h"
+#include "../config/AppConfig.h"
 #include <Wire.h>
 
 DisplayManager::DisplayManager(ILogger& logger)
@@ -9,6 +10,9 @@ DisplayManager::DisplayManager(ILogger& logger)
 void DisplayManager::begin()
 {
     logger.info("DisplayManager::begin()");
+    
+    // Khởi tạo I2C với các chân cụ thể cho ESP32-S3
+    Wire.begin(AppConfig::I2C_SDA_PIN, AppConfig::I2C_SCL_PIN);
     
     // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
     if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS))
@@ -49,3 +53,4 @@ void DisplayManager::update()
 {
     display.display();
 }
+
