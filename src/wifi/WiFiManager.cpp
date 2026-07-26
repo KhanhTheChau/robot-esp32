@@ -12,18 +12,24 @@ void WiFiManager::begin()
 {
     logger.info("WiFiManager::begin()");
     WiFi.mode(WIFI_STA);
+    
+    // Thêm các điểm truy cập WiFi từ cấu hình Secrets
+    for (size_t i = 0; i < Secrets::WIFI_NETWORKS_COUNT; ++i) {
+        wifiMulti.addAP(Secrets::WIFI_NETWORKS[i].ssid, Secrets::WIFI_NETWORKS[i].password);
+    }
+    
     connect();
 }
 
 void WiFiManager::loop()
 {
-    if (!isConnected())
+    // WiFiMulti.run() tự xử lý kết nối, nếu mất nó tự connect lại mạng mạnh nhất
+    if (wifiMulti.run() != WL_CONNECTED)
     {
         if (millis() - reconnectTimer >= RECONNECT_INTERVAL_MS)
         {
             reconnectTimer = millis();
-            logger.warning("WiFi disconnected. Reconnecting...");
-            connect();
+            logger.warning("WiFi disconnected. Reconnecting via WiFiMulti...");
         }
     }
 }
@@ -56,9 +62,7 @@ const char* WiFiManager::getIPAddress() const
 
 void WiFiManager::connect()
 {
-    logger.info("Connecting to WiFi...");
-    logger.debug(Secrets::WIFI_SSID);
-    
-    // Non-blocking WiFi begin
-    WiFi.begin(Secrets::WIFI_SSID, Secrets::WIFI_PASSWORD);
+    logger.info("Connecting to WiFi using WiFiMulti...");
+    // Gọi lần đầu để kích hoạt quét và kết nối
+    wifiMulti.run();
 }

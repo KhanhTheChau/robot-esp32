@@ -2,6 +2,7 @@
 #define WIFI_MANAGER_H
 
 #include <WiFi.h>
+#include <WiFiMulti.h>
 #include "IWiFiManager.h"
 #include "../core/ILogger.h"
 
@@ -19,6 +20,7 @@ public:
 
 private:
     ILogger& logger;
+    WiFiMulti wifiMulti;
     unsigned long reconnectTimer;
     static constexpr unsigned long RECONNECT_INTERVAL_MS = 5000;
     
