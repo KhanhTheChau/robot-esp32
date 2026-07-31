@@ -28,7 +28,9 @@ void Application::updateDisplayStatus()
 {
     if (wifi.isConnected())
     {
-        display.showStatus("Ready! Hold BOOT");
+        // Khi kết nối thành công, xóa màn hình. Vòng lặp IDLE sẽ tự động play GIF.
+        display.clear();
+        display.update();
     }
     else
     {
@@ -45,6 +47,10 @@ void Application::loop()
     {
         case AppState::IDLE:
         {
+            if (wifi.isConnected()) {
+                display.playGifFrame();
+            }
+
             if (button.isPressed()) 
             {
                 logger.info("Button pressed, transitioning to RECORDING...");

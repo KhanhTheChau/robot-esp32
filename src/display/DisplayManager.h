@@ -17,6 +17,7 @@ public:
     void printText(const char* text, int x = 0, int y = 0) override;
     void showStatus(const char* status) override;
     void drawFace(const String& emotion) override;
+    void playGifFrame() override;
     void update() override;
 
 private:

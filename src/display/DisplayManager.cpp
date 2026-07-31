@@ -1,6 +1,7 @@
 #include "DisplayManager.h"
 #include "../config/AppConfig.h"
 #include <Wire.h>
+#include "GifFrames.h"
 
 DisplayManager::DisplayManager(ILogger& logger)
     : logger(logger), display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET)
@@ -88,6 +89,27 @@ void DisplayManager::drawFace(const String& emotion)
     }
     
     update();
+}
+
+void DisplayManager::playGifFrame()
+{
+    static int currentFrame = 0;
+    static unsigned long lastFrameTime = 0;
+    
+    // Phát ở tốc độ ~20fps (50ms mỗi frame)
+    if (millis() - lastFrameTime > 50) 
+    {
+        lastFrameTime = millis();
+        clear();
+        // Lấy frame hiện tại từ mảng PROGMEM và hiển thị
+        display.drawBitmap(0, 0, gif_frames[currentFrame], 128, 64, SSD1306_WHITE);
+        update();
+        
+        currentFrame++;
+        if (currentFrame >= gif_frame_count) {
+            currentFrame = 0;
+        }
+    }
 }
 
 void DisplayManager::update()
