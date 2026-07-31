@@ -11,8 +11,9 @@ public:
     String intent;
     float confidence;
     String audioUrl;
+    String emotion;
 
-    VoiceResult() : success(false), confidence(0.0f) {}
+    VoiceResult() : success(false), confidence(0.0f), emotion("neutral") {}
 };
 
 #endif // VOICE_RESULT_H

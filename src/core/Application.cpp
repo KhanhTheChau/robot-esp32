@@ -78,23 +78,15 @@ void Application::loop()
                 {
                     logger.info("Voice processed successfully");
                     
-                    // Hiển thị chữ lên OLED ngay lập tức để Demo thật ngầu
-                    display.clear();
-                    display.printText(("U: " + result.intent).c_str(), 0, 0);
-                    display.printText(("AI: " + result.text).c_str(), 0, 16);
-                    display.printText("...", 0, 48);
-                    display.update();
+                    // Hiển thị KHUÔN MẶT CẢM XÚC lên OLED
+                    display.drawFace(result.emotion);
                     
                     if (result.audioUrl.length() > 0)
                     {
-                        // Gọi luồng giả lập tải âm thanh (để nó câu giờ trong lúc máy tính phát tiếng)
+                        // Gọi luồng tải âm thanh
                         voice.playResponse(result.audioUrl);
                         
-                        // Xóa dấu "..." khi phát xong
-                        display.clear();
-                        display.printText(("U: " + result.intent).c_str(), 0, 0);
-                        display.printText(("AI: " + result.text).c_str(), 0, 16);
-                        display.update();
+                        // Đợi 2 giây sau khi phát xong để user nhìn mặt
                         delay(2000);
                     }
                     else

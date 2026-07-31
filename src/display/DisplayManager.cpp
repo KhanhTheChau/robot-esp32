@@ -1,4 +1,4 @@
-﻿#include "DisplayManager.h"
+#include "DisplayManager.h"
 #include "../config/AppConfig.h"
 #include <Wire.h>
 
@@ -46,6 +46,47 @@ void DisplayManager::showStatus(const char* status)
     display.setCursor(0, 0);
     display.println(F("Status:"));
     display.println(status);
+    update();
+}
+
+void DisplayManager::drawFace(const String& emotion)
+{
+    clear();
+    
+    // Tọa độ tâm màn hình: 64, 32
+    if (emotion == "happy")
+    {
+        display.drawCircleHelper(32, 28, 12, 1, SSD1306_WHITE); 
+        display.drawCircleHelper(96, 28, 12, 1, SSD1306_WHITE);
+        display.drawCircleHelper(64, 36, 16, 2, SSD1306_WHITE);
+    }
+    else if (emotion == "sad")
+    {
+        display.drawLine(20, 16, 44, 24, SSD1306_WHITE);
+        display.drawLine(84, 24, 108, 16, SSD1306_WHITE);
+        display.drawCircleHelper(64, 56, 16, 1, SSD1306_WHITE);
+    }
+    else if (emotion == "angry")
+    {
+        display.drawLine(20, 12, 44, 24, SSD1306_WHITE);
+        display.drawLine(84, 24, 108, 12, SSD1306_WHITE);
+        display.fillCircle(32, 28, 6, SSD1306_WHITE);
+        display.fillCircle(96, 28, 6, SSD1306_WHITE);
+        display.drawLine(48, 48, 80, 48, SSD1306_WHITE);
+    }
+    else if (emotion == "surprised")
+    {
+        display.drawCircle(32, 24, 10, SSD1306_WHITE);
+        display.drawCircle(96, 24, 10, SSD1306_WHITE);
+        display.drawCircle(64, 48, 8, SSD1306_WHITE);
+    }
+    else // neutral
+    {
+        display.fillCircle(32, 24, 6, SSD1306_WHITE);
+        display.fillCircle(96, 24, 6, SSD1306_WHITE);
+        display.drawLine(54, 48, 74, 48, SSD1306_WHITE);
+    }
+    
     update();
 }
 

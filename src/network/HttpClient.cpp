@@ -86,6 +86,7 @@ void HttpClient::parseResponse(const String& payload, VoiceResult& outResult)
     outResult.intent = doc.containsKey("intent") ? doc["intent"].as<const char*>() : "";
     outResult.confidence = doc["confidence"] | 0.0f;
     outResult.audioUrl = doc.containsKey("audio_url") ? doc["audio_url"].as<const char*>() : "";
+    outResult.emotion = doc.containsKey("emotion") ? doc["emotion"].as<const char*>() : "neutral";
     
     logger.info("Parsed VoiceResult successfully.");
 }
