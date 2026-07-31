@@ -14,6 +14,7 @@ public:
     ~HttpClient() override = default;
 
     UploadResult sendAudio(const uint8_t* audioData, size_t dataSize, VoiceResult& outResult) override;
+    bool downloadAudioStream(const String& url, std::function<void(const uint8_t*, size_t)> onData) override;
 
 private:
     ILogger& logger;

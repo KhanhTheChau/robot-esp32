@@ -2,6 +2,7 @@
 #define IHTTP_CLIENT_H
 
 #include "../models/VoiceResult.h"
+#include <functional>
 
 enum class UploadResult
 {
@@ -18,6 +19,7 @@ public:
     virtual ~IHttpClient() = default;
 
     virtual UploadResult sendAudio(const uint8_t* audioData, size_t dataSize, VoiceResult& outResult) = 0;
+    virtual bool downloadAudioStream(const String& url, std::function<void(const uint8_t*, size_t)> onData) = 0;
 };
 
 #endif // IHTTP_CLIENT_H

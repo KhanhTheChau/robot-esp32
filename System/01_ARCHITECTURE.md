@@ -16,7 +16,9 @@ Application
  │
  ├──────── IButton
  │
- └──────── ISensor
+ ├──────── IAudioRecorder
+ │
+ └──────── IAudioPlayer
 ```
 
 Application chỉ điều phối.
@@ -48,11 +50,20 @@ DisplayManager display(logger);
 
 HttpClient http(logger, wifi);
 
+ButtonManager button(logger);
+
+AudioRecorder recorder(logger);
+
+AudioPlayer player(logger);
+
 Application app(
     logger,
     wifi,
     display,
-    http
+    http,
+    button,
+    recorder,
+    player
 );
 ```
 
@@ -103,7 +114,9 @@ IHttpClient
 
 IButton
 
-ISensor
+IAudioRecorder
+
+IAudioPlayer
 
 Application chỉ sử dụng Interface.
 

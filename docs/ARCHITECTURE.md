@@ -1,50 +1,49 @@
-﻿# Kiến trúc Hệ thống Voice Assistant (ESP32-S3 + INMP441 + Gemini)
+# Kiến trúc Hệ thống (System Architecture)
 
-Tài liệu này lưu trữ toàn bộ kiến thức kỹ thuật quan trọng nhất về module Voice, được tinh chỉnh sau rất nhiều lần thử nghiệm thực tế. **Đây là bản thiết kế chuẩn mực (Golden Reference) dùng để phục hồi nếu hệ thống bị lỗi trong tương lai.**
+Hệ thống Robot ESP32 được thiết kế dựa trên kiến trúc hướng đối tượng (OOP), sử dụng Dependency Injection để truyền các module vào `Application` core, giúp dễ dàng mở rộng và test.
 
-## 1. Sơ đồ luồng dữ liệu (Data Flow)
+## 1. Vòng đời ứng dụng (App Lifecycle)
 
-1. **Hardware (INMP441):** Thu thập âm thanh qua I2S (24-bit MSB-aligned).
-2. **ESP32-S3 (AudioRecorder):** Giao tiếp I2S bằng DMA, cấu hình tự động cắt 16-bit MSB, đưa vào buffer.
-3. **ESP32-S3 (HttpClient):** Nén âm thanh dạng thô (PCM 16-bit, 16kHz, Mono) và POST lên Server qua mạng WiFi.
-4. **Python Server:** Nhận dữ liệu, đóng gói thành file `.wav` chuẩn để lưu trữ và nạp vào Google Speech-To-Text API.
-5. **Gemini AI:** Nhận văn bản từ Google STT, sinh câu trả lời ngắn gọn (phù hợp với thiết bị nhúng).
-6. **ESP32-S3 (DisplayManager):** Parse JSON trả về, render văn bản của Gemini lên màn hình OLED 0.96".
+Toàn bộ logic chính nằm trong `src/core/Application.cpp`. Trạng thái của Robot hoạt động theo một **State Machine (Máy trạng thái)** cơ bản:
 
-## 2. Các Bài học Kỹ thuật Sâu sắc (Tránh Lối Mòn)
+- **IDLE (Nghỉ ngơi):** Robot chờ người dùng tương tác. Nó liên tục kiểm tra trạng thái nút nhấn. Màn hình hiển thị "Ready! Hold BOOT".
+- **RECORDING (Đang ghi âm):** Khi người dùng **nhấn và giữ** nút (Button), Robot chuyển sang trạng thái này. Micro thu âm qua I2S và lưu vào bộ đệm (Buffer). Màn hình hiển thị hiệu ứng nhấp nháy "Recording [*]".
+- **PROCESSING (Đang xử lý):** Khi người dùng **thả nút**, Robot dừng ghi âm và khóa trạng thái thành PROCESSING.
+  1. Gửi toàn bộ dữ liệu âm thanh qua HTTP POST lên Server.
+  2. Màn hình hiển thị "Uploading...".
+  3. Nhờ Server xử lý và nhận về kết quả JSON.
+  4. Hiển thị thông tin Text (câu người dùng nói / câu AI trả lời) lên OLED.
+  5. Đọc URL âm thanh từ JSON và tiến hành stream trực tiếp (Download & Play) ra loa.
+  6. Sau khi phát xong, nghỉ 3 giây rồi quay lại trạng thái `IDLE`.
 
-### A. Lỗi xung đột Nút BOOT và Xung nhịp I2S (MCLK Bug)
-- **Triệu chứng:** Khi khởi tạo `i2s_driver_install` trên ESP32-S3, mạch liên tục bị crash "Connecting..." hoặc tự động nhảy vào chế độ "Recording" dù người dùng không bấm nút.
-- **Nguyên nhân:** Driver I2S mặc định của Espressif (ESP-IDF) tự động xuất tín hiệu xung nhịp Master Clock (MCLK) ra chân `GPIO 0`. Chân này lại chính là chân của nút BOOT. Tín hiệu xung nhịp cao tầng làm nhiễu tín hiệu kéo-thả của nút bấm.
-- **Giải pháp dứt điểm:** Phải ép `mck_io_num` về -1 (không sử dụng).
+## 2. Các Module chính (Cấu trúc thư mục `src`)
+
+- `core/`: Chứa `Application` (trái tim của hệ thống điều phối các states) và `Logger` (in log ra Serial).
+- `config/`: Chứa `AppConfig.h` lưu tất cả các thiết lập phần cứng (Chân Pin) và phần mềm (URL, Baudrate).
+- `audio/`: Quản lý In/Out âm thanh. `AudioRecorder` ghi âm từ I2S Mic, `AudioPlayer` phát âm thanh ra I2S Speaker.
+- `button/`: Quản lý nút nhấn vật lý chống dội (debounce).
+- `display/`: Quản lý màn hình OLED.
+- `network/`: `HttpClient` quản lý gửi nhận HTTP requests (POST audio, GET stream).
+- `services/`: Lớp trung gian mức cao. Ví dụ `VoiceService` kết nối `AudioRecorder`, `AudioPlayer`, và `HttpClient` lại với nhau để tạo thành quy trình: Ghi âm -> Gửi lên mạng -> Nhận link -> Phát link.
+- `models/`: Định nghĩa các cấu trúc dữ liệu (`VoiceResult` chứa JSON map).
+- `wifi/`: Quản lý kết nối WiFi.
+
+## 3. Dependency Injection (DI)
+
+Robot ESP32 sử dụng interfaces (`IHttpClient`, `IDisplay`, `IAudioRecorder`, v.v.) thay vì trực tiếp sử dụng class cụ thể. Trong file chính (`main.cpp` - không nằm trong thư mục này nhưng ở cấp cao nhất của project Arduino), chúng ta sẽ khởi tạo các đối tượng và truyền vào `Application`:
+
 ```cpp
-#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 4, 0))
-    pin_config.mck_io_num = I2S_PIN_NO_CHANGE;
-#endif
+// Ví dụ mô phỏng cách main.cpp hoạt động
+WiFiManager wifi;
+DisplayManager display;
+ButtonManager button;
+AudioRecorder recorder;
+AudioPlayer player;
+HttpClient httpClient(logger, wifi);
+VoiceService voice(logger, recorder, player, httpClient);
+
+Application app(logger, wifi, display, button, voice);
+app.begin();
 ```
 
-### B. Lỗi Vỡ tiếng / Nhiễu tĩnh điện (Audio Clipping / Static Noise)
-- **Triệu chứng:** File âm thanh thu được nghe toàn tiếng xèo xèo, nổ lụp bụp, Google STT không thể nhận dạng.
-- **Phân tích:** 
-  - INMP441 trả về dữ liệu 24-bit được "chèn" vào trong khung truyền 32-bit (dữ liệu nằm ở dải MSB - các bit cao nhất).
-  - Lúc đầu chúng ta cố tình cấu hình I2S đọc dạng 32-bit, sau đó dùng thuật toán dịch bit thủ công (`>> 11`, `>> 13`) để giảm xuống 16-bit và tăng âm lượng. Phép toán thủ công này tạo ra hệ số nhân âm lượng khổng lồ (Gain x8, x32), khiến biên độ sóng âm thanh chạm trần (-32768 đến 32767) dẫn đến Clipping kịch liệt.
-- **Giải pháp dứt điểm (Theo chuẩn DroneBotWorkshop):**
-  - Không cần tính toán thủ công. Trình điều khiển DMA của ESP32 cực kỳ thông minh.
-  - Cấu hình chuẩn: `bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT`. Phần cứng ESP32 sẽ tự động bóc tách đúng 16 bit MSB từ tín hiệu 24-bit của INMP441, nạp trực tiếp vào biến `int16_t` với chất lượng cực kì trong trẻo và nguyên bản (Gain 1:1).
-
-### C. Lỗi Kênh Trái/Phải (L/R Channel)
-- **Chuẩn bị:** Chân L/R của INMP441 PHẢI được nối với `GND`.
-- **Cấu hình:** `channel_format = I2S_CHANNEL_FMT_ONLY_LEFT`.
-- Nếu bỏ lửng chân L/R (floating), tín hiệu sẽ bị nhiễu dải điện một chiều (DC Offset) khổng lồ, khiến tín hiệu âm thanh bị ép xuống đáy -20000.
-
-## 3. Cấu trúc Source Code ESP32
-
-- `src/audio/AudioRecorder.cpp`: Trái tim của hệ thống I2S. Nơi thiết lập DMA và giao tiếp với Micro.
-- `src/button/ButtonManager.cpp`: Xử lý chống dội phím (Debounce) cho nút bấm BOOT (GPIO 0).
-- `src/network/HttpClient.cpp`: Xử lý gửi HTTP POST raw binary (PCM) tới Server Python mà không cần đóng gói Wav Header (Wav Header được ráp tại Python để tiết kiệm RAM cho ESP32).
-- `src/display/DisplayManager.cpp`: Giao tiếp I2C với OLED (GPIO 11, GPIO 12).
-- `src/services/VoiceService.cpp`: State Machine (Trạng thái) kết nối toàn bộ quy trình: Bấm nút -> Thu âm -> Gửi mạng -> Hiển thị kết quả.
-
-## 4. Phục hồi và Phát triển
-Nếu trong tương lai hệ thống âm thanh bị hỏng do cập nhật Core Arduino hoặc thay đổi vi điều khiển, hãy đối chiếu các thông số I2S trong `AudioRecorder.cpp` với tài liệu này. Đừng cố gắng dịch bit thủ công (Bit-shifting) trừ khi bạn thực sự phải giao tiếp bằng `I2S_BITS_PER_SAMPLE_32BIT` (chỉ dùng khi dùng các thư viện DSP chuyên sâu).
-
+Thiết kế này giúp bạn dễ dàng thay đổi ví dụ từ Màn hình OLED sang Màn hình TFT mà không cần sửa code trong `Application` (chỉ cần tạo class `TftDisplay` kế thừa `IDisplay`).

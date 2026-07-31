@@ -14,6 +14,11 @@ namespace AppConfig
     constexpr uint8_t I2S_SD_PIN  = 18; // DOUT
     constexpr int I2S_SAMPLE_RATE = 16000;
 
+    // Cấu hình I2S Speaker (MAX98357) cho ESP32-S3
+    constexpr uint8_t I2S_SPK_BCLK_PIN = 4;
+    constexpr uint8_t I2S_SPK_LRC_PIN  = 5;
+    constexpr uint8_t I2S_SPK_DIN_PIN  = 6;
+
     // Cấu hình I2C cho OLED SSD1306 trên ESP32-S3
     constexpr uint8_t I2C_SDA_PIN = 8;
     constexpr uint8_t I2C_SCL_PIN = 9;

@@ -1,5 +1,6 @@
 #include "HttpClient.h"
 #include "../config/AppConfig.h"
+#include <WiFiClient.h>
 
 HttpClient::HttpClient(ILogger& logger, IWiFiManager& wifi)
     : logger(logger), wifi(wifi)
@@ -27,6 +28,7 @@ UploadResult HttpClient::sendAudio(const uint8_t* audioData, size_t dataSize, Vo
     // Lưu ý: thư viện ESP32 là HTTPClient, lớp của chúng ta cũng là HttpClient. C++ phân biệt hoa thường nên không trùng.
     
     http.begin(AppConfig::VOICE_API_URL);
+    http.setTimeout(20000); // Tăng timeout lên 20 giây để chờ Gemini suy nghĩ và TTS
     http.addHeader("Content-Type", "application/octet-stream"); // Gửi dạng raw PCM
     
     int httpResponseCode = http.POST(const_cast<uint8_t*>(audioData), dataSize);
@@ -43,6 +45,7 @@ UploadResult HttpClient::sendAudio(const uint8_t* audioData, size_t dataSize, Vo
         {
             logger.error("HTTP POST failed with code:");
             logger.error(String(httpResponseCode).c_str());
+            outResult.text = "HTTP Code: " + String(httpResponseCode);
             result = UploadResult::ServerError;
         }
     }
@@ -50,6 +53,7 @@ UploadResult HttpClient::sendAudio(const uint8_t* audioData, size_t dataSize, Vo
     {
         logger.error("HTTP POST error:");
         logger.error(http.errorToString(httpResponseCode).c_str());
+        outResult.text = http.errorToString(httpResponseCode);
         
         if (httpResponseCode == HTTPC_ERROR_CONNECTION_REFUSED)
             result = UploadResult::ConnectionFailed;
@@ -63,9 +67,10 @@ UploadResult HttpClient::sendAudio(const uint8_t* audioData, size_t dataSize, Vo
 
 void HttpClient::parseResponse(const String& payload, VoiceResult& outResult)
 {
-    logger.debug("Parsing JSON payload...");
+    logger.info("Raw JSON payload:");
+    logger.info(payload.c_str());
     
-    StaticJsonDocument<256> doc;
+    DynamicJsonDocument doc(1024);
     DeserializationError error = deserializeJson(doc, payload);
 
     if (error)
@@ -77,9 +82,60 @@ void HttpClient::parseResponse(const String& payload, VoiceResult& outResult)
     }
 
     outResult.success = doc["success"] | false;
-    outResult.text = doc["text"] | "";
-    outResult.intent = doc["intent"] | "";
+    outResult.text = doc.containsKey("text") ? doc["text"].as<const char*>() : "";
+    outResult.intent = doc.containsKey("intent") ? doc["intent"].as<const char*>() : "";
     outResult.confidence = doc["confidence"] | 0.0f;
+    outResult.audioUrl = doc.containsKey("audio_url") ? doc["audio_url"].as<const char*>() : "";
     
     logger.info("Parsed VoiceResult successfully.");
+}
+
+bool HttpClient::downloadAudioStream(const String& url, std::function<void(const uint8_t*, size_t)> onData)
+{
+    if (!wifi.isConnected())
+    {
+        logger.error("WiFi not connected. Cannot download audio.");
+        return false;
+    }
+
+    logger.info("Downloading audio from:");
+    logger.info(url.c_str());
+
+    ::HTTPClient http;
+    http.begin(url);
+    
+    int httpCode = http.GET();
+    if (httpCode == 200)
+    {
+        int len = http.getSize();
+        WiFiClient* stream = http.getStreamPtr();
+        
+        uint8_t buff[512] = { 0 };
+        while (http.connected() && (len > 0 || len == -1))
+        {
+            size_t size = stream->available();
+            if (size)
+            {
+                int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
+                if (c > 0 && onData)
+                {
+                    onData(buff, c);
+                }
+                if (len > 0) {
+                    len -= c;
+                }
+            }
+            delay(1);
+        }
+        http.end();
+        return true;
+    }
+    else
+    {
+        logger.error("HTTP GET failed with code:");
+        logger.error(String(httpCode).c_str());
+    }
+
+    http.end();
+    return false;
 }

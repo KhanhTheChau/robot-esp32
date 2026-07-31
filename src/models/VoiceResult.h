@@ -10,6 +10,7 @@ public:
     String text;
     String intent;
     float confidence;
+    String audioUrl;
 
     VoiceResult() : success(false), confidence(0.0f) {}
 };

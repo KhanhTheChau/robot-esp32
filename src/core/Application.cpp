@@ -1,4 +1,4 @@
-﻿#include "Application.h"
+#include "Application.h"
 #include <Arduino.h>
 
 Application::Application(
@@ -77,17 +77,38 @@ void Application::loop()
                 if (result.success)
                 {
                     logger.info("Voice processed successfully");
-                    String line1 = "Intent: " + result.intent;
-                    String line2 = "Conf: " + String(result.confidence);
                     
-                    display.printText(line1.c_str(), 0, 0);
-                    display.printText(line2.c_str(), 0, 16);
-                    display.printText(result.text.c_str(), 0, 32);
+                    // Hiển thị chữ lên OLED ngay lập tức để Demo thật ngầu
+                    display.clear();
+                    display.printText(("U: " + result.intent).c_str(), 0, 0);
+                    display.printText(("AI: " + result.text).c_str(), 0, 16);
+                    display.printText("...", 0, 48);
                     display.update();
+                    
+                    if (result.audioUrl.length() > 0)
+                    {
+                        // Gọi luồng giả lập tải âm thanh (để nó câu giờ trong lúc máy tính phát tiếng)
+                        voice.playResponse(result.audioUrl);
+                        
+                        // Xóa dấu "..." khi phát xong
+                        display.clear();
+                        display.printText(("U: " + result.intent).c_str(), 0, 0);
+                        display.printText(("AI: " + result.text).c_str(), 0, 16);
+                        display.update();
+                        delay(2000);
+                    }
+                    else
+                    {
+                        display.clear();
+                        display.printText("NO AUDIO LINK!", 0, 0);
+                        display.update();
+                        delay(2000);
+                    }
                 }
                 else
                 {
                     logger.error("Voice processing failed");
+                    display.clear();
                     display.printText("Error:", 0, 0);
                     display.printText(result.text.c_str(), 0, 16);
                     display.update();
