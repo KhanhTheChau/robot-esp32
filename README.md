@@ -54,6 +54,7 @@ const char* const VOICE_API_URL = "http://<IP_SERVER_PYTHON>:5000/upload";
 3. Cài đặt các thư viện Arduino cần thiết:
    - `Adafruit_SSD1306` (cho OLED)
    - `ArduinoJson` (để parse JSON phản hồi)
+   - `WebSockets` (của Markus Sattler, hỗ trợ kết nối thời gian thực)
 4. Biên dịch và nạp code lên ESP32-S3.
 
 ## 🧠 Cài đặt Python Server & Gemini API
@@ -63,7 +64,7 @@ Server Python đóng vai trò nhận file âm thanh chuẩn (PCM/WAV) từ ESP32
 1. Chuyển đến thư mục chứa server (ví dụ `D:\arduino\python`).
 2. Cài đặt các thư viện Python:
 ```bash
-pip install flask SpeechRecognition wave google-generativeai
+pip install websockets asyncio SpeechRecognition wave google-generativeai edge-tts imageio-ffmpeg
 ```
 3. Mở file `server.py` và thêm API Key Gemini của bạn:
 ```python

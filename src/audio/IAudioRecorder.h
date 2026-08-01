@@ -10,17 +10,11 @@ public:
 
     virtual void begin() = 0;
     
-    // Bắt đầu ghi âm (khởi tạo bộ đệm, bắt đầu đọc I2S)
-    virtual void startRecording() = 0;
+    // Đọc non-blocking, trả về số byte đọc được
+    virtual size_t readAudioChunk(uint8_t* buffer, size_t maxLen) = 0;
     
-    // Dừng ghi âm và trả về kích thước dữ liệu đã ghi
-    virtual void stopRecording() = 0;
-    
-    // Trả về con trỏ tới bộ đệm chứa dữ liệu PCM
-    virtual const uint8_t* getAudioBuffer() const = 0;
-    
-    // Trả về kích thước dữ liệu thực tế
-    virtual size_t getAudioBufferSize() const = 0;
+    // Tính toán RMS
+    virtual float calculateRMS(const uint8_t* buffer, size_t len) = 0;
 };
 
 #endif // IAUDIO_RECORDER_H

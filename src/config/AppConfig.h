@@ -26,9 +26,14 @@ namespace AppConfig
     // Cấu hình Serial
     constexpr unsigned long SERIAL_BAUD_RATE = 115200;
 
-    // API Server url (Máy tính chạy server.py phải cùng mạng WiFi với mạch)
-    // Sửa YOUR_COMPUTER_IP thành IP LAN của máy tính (ví dụ: 192.168.1.10)
-    constexpr const char* VOICE_API_URL = "http://192.168.1.6:5000/upload";
+    // Server WebSocket
+    constexpr const char* WS_API_IP = "192.168.1.2";
+    constexpr uint16_t WS_API_PORT = 5000;
+
+    // Cấu hình VAD
+    constexpr float VAD_RMS_THRESHOLD = 500.0f; // Ngưỡng kích hoạt giọng nói
+    constexpr unsigned long VAD_SILENCE_TIMEOUT_MS = 1500; // Im lặng 1.5s là hết câu
+    constexpr int VAD_CHUNK_SIZE = 1024; // Kích thước mỗi chunk PCM gửi đi
 }
 
 #endif // APP_CONFIG_H

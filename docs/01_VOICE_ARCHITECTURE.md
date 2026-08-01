@@ -54,6 +54,9 @@ Tài liệu này lưu trữ toàn bộ kiến thức kỹ thuật quan trọng n
 - `src/display/DisplayManager.cpp`: Giao tiếp I2C với OLED (GPIO 11, GPIO 12).
 - `src/services/VoiceService.cpp`: State Machine kết nối toàn bộ quy trình: Bấm nút -> Thu âm -> Gửi lên mạng -> Hiển thị text -> Phát âm thanh trả lời.
 
-## 4. Phục hồi và Phát triển
+## 4. Tài liệu tham khảo thêm
+
+- [Hướng dẫn Tinh chỉnh VAD & Tối ưu Cường độ Âm thanh (RMS)](./modules/vad_tuning.md)
+- [Cơ chế Hoạt ảnh GIF trên Màn hình OLED](./modules/gif_animations.md)
 Nếu trong tương lai hệ thống âm thanh bị hỏng do cập nhật Core Arduino hoặc thay đổi vi điều khiển, hãy đối chiếu các thông số I2S trong `AudioRecorder.cpp` với tài liệu này. Đừng cố gắng dịch bit thủ công (Bit-shifting) trừ khi bạn thực sự phải giao tiếp bằng `I2S_BITS_PER_SAMPLE_32BIT` (chỉ dùng khi dùng các thư viện DSP chuyên sâu).
 

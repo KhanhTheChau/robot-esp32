@@ -6,8 +6,9 @@ Application::Application(
     IWiFiManager& wifi,
     IDisplay& display,
     IButton& button,
-    VoiceService& voice
-) : logger(logger), wifi(wifi), display(display), button(button), voice(voice), currentState(AppState::IDLE)
+    VoiceService& voice,
+    IWebSocketClient& webSocket
+) : logger(logger), wifi(wifi), display(display), button(button), voice(voice), webSocket(webSocket), currentState(AppState::IDLE)
 {
 }
 
@@ -19,7 +20,25 @@ void Application::begin()
 
     button.begin();
     wifi.begin();
+    webSocket.begin();
     voice.begin();
+
+    webSocket.onVoiceResult([this](const VoiceResult& result) {
+        if (result.success) {
+            logger.info("Server responded with AI reply.");
+            display.clear();
+            display.drawFace(result.emotion);
+            currentState = AppState::SPEAKING;
+        } else {
+            logger.error("Server error.");
+            display.clear();
+            display.printText("Error from server", 0, 0);
+            display.update();
+            delay(2000);
+            updateDisplayStatus();
+            currentState = AppState::IDLE;
+        }
+    });
 
     updateDisplayStatus();
 }
@@ -28,7 +47,6 @@ void Application::updateDisplayStatus()
 {
     if (wifi.isConnected())
     {
-        // Khi kết nối thành công, xóa màn hình. Vòng lặp IDLE sẽ tự động play GIF.
         display.clear();
         display.update();
     }
@@ -42,86 +60,77 @@ void Application::loop()
 {
     wifi.loop();
     button.loop();
+    webSocket.loop();
 
-    switch (currentState)
+    if (wifi.isConnected() && webSocket.isConnected())
     {
-        case AppState::IDLE:
+        switch (currentState)
         {
-            if (wifi.isConnected()) {
+            case AppState::IDLE:
+            {
                 display.playGifFrame();
-            }
-
-            if (button.isPressed()) 
-            {
-                logger.info("Button pressed, transitioning to RECORDING...");
-                currentState = AppState::RECORDING;
-                display.showStatus("Recording...");
-                voice.startRecording();
-            }
-            break;
-        }
-
-        case AppState::RECORDING:
-        {
-            // Trực quan hóa: Nhấp nháy chữ Recording
-            if ((millis() / 500) % 2 == 0) {
-                display.showStatus("Recording [*]");
-            } else {
-                display.showStatus("Recording [ ]");
-            }
-
-            if (!button.isHeld())
-            {
-                logger.info("Button released, transitioning to PROCESSING...");
-                currentState = AppState::PROCESSING;
-                display.showStatus("Uploading...");
+                voice.loop(); // VAD liên tục chạy
                 
-                // Stop and Upload
-                VoiceResult result = voice.stopAndUpload();
-                
-                display.clear();
-                if (result.success)
+                if (voice.getState() == VoiceState::SPEAKING)
                 {
-                    logger.info("Voice processed successfully");
-                    
-                    // Hiển thị KHUÔN MẶT CẢM XÚC lên OLED
-                    display.drawFace(result.emotion);
-                    
-                    if (result.audioUrl.length() > 0)
-                    {
-                        // Gọi luồng tải âm thanh
-                        voice.playResponse(result.audioUrl);
-                        
-                        // Đợi 2 giây sau khi phát xong để user nhìn mặt
-                        delay(2000);
-                    }
-                    else
-                    {
-                        display.clear();
-                        display.printText("NO AUDIO LINK!", 0, 0);
-                        display.update();
-                        delay(2000);
-                    }
+                    logger.info("Transitioning to LISTENING...");
+                    currentState = AppState::LISTENING;
+                    display.showStatus("Listening...");
                 }
-                else
-                {
-                    logger.error("Voice processing failed");
-                    display.clear();
-                    display.printText("Error:", 0, 0);
-                    display.printText(result.text.c_str(), 0, 16);
-                    display.update();
+                break;
+            }
+
+            case AppState::LISTENING:
+            {
+                // Nhấp nháy chữ Listening
+                if ((millis() / 500) % 2 == 0) {
+                    display.showStatus("Listening [*]");
+                } else {
+                    display.showStatus("Listening [ ]");
                 }
 
-                delay(3000); // Đợi 3 giây để đọc kết quả
-                updateDisplayStatus();
-                currentState = AppState::IDLE;
+                voice.loop(); // Tiếp tục thu âm và gửi WebSocket
+                
+                if (voice.getState() == VoiceState::SILENT)
+                {
+                    logger.info("Transitioning to PROCESSING...");
+                    currentState = AppState::PROCESSING;
+                    display.showStatus("Processing...");
+                }
+                break;
             }
-            break;
+            
+            case AppState::PROCESSING:
+            {
+                // Chờ callback onVoiceResult từ WebSocket đổi state
+                break;
+            }
+
+            case AppState::SPEAKING:
+            {
+                static unsigned long speakingStartTime = 0;
+                if (speakingStartTime == 0) {
+                    speakingStartTime = millis();
+                }
+
+                // Phát audio đang được xử lý ở nền
+                
+                if (millis() - speakingStartTime > 8000) { // Đợi 8 giây cho việc đọc text an toàn
+                    speakingStartTime = 0;
+                    updateDisplayStatus();
+                    currentState = AppState::IDLE;
+                }
+                break;
+            }
         }
-        
-        case AppState::PROCESSING:
-            // Không làm gì, đang block trong VoiceService::stopAndUpload()
-            break;
+    }
+    else
+    {
+        // Vẫn hiển thị GIF hoặc Connecting
+        if (!wifi.isConnected()) {
+            display.showStatus("Connecting WiFi...");
+        } else if (!webSocket.isConnected()) {
+            display.showStatus("Connecting Server...");
+        }
     }
 }
-

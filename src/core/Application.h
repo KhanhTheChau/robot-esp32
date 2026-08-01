@@ -1,4 +1,4 @@
-﻿#ifndef APPLICATION_H
+#ifndef APPLICATION_H
 #define APPLICATION_H
 
 #include "ILogger.h"
@@ -6,6 +6,7 @@
 #include "../display/IDisplay.h"
 #include "../button/IButton.h"
 #include "../services/VoiceService.h"
+#include "../network/IWebSocketClient.h"
 
 class Application final
 {
@@ -15,7 +16,8 @@ public:
         IWiFiManager& wifi,
         IDisplay& display,
         IButton& button,
-        VoiceService& voice
+        VoiceService& voice,
+        IWebSocketClient& webSocket
     );
 
     void begin();
@@ -27,11 +29,13 @@ private:
     IDisplay& display;
     IButton& button;
     VoiceService& voice;
+    IWebSocketClient& webSocket;
 
     enum class AppState {
         IDLE,
-        RECORDING,
-        PROCESSING
+        LISTENING,
+        PROCESSING,
+        SPEAKING
     };
     AppState currentState;
 
