@@ -71,6 +71,8 @@ python server.py
 ```
 
 ### 2. Phía Nhúng (ESP32-S3)
+> 🆕 **Dành cho Người mới bắt đầu (Beginner):** Nếu bạn chưa từng dùng C++ hay IDE của Arduino bao giờ, hãy đọc qua cuốn sổ tay [Cầm tay chỉ việc Nạp code từ A-Z](docs/Arduino_Beginner_Guide.md) này trước nhé!
+
 1. Cài đặt các thư viện trong Arduino IDE: `ArduinoJson`, `Adafruit SSD1306`, `Adafruit GFX`, `WebSockets` (by Markus Sattler).
 2. Vào `src/config/Secrets.example.h`, đổi tên thành `Secrets.h` và điền SSID/Mật khẩu WiFi.
 3. Vào `src/config/AppConfig.h`, cấu hình lại `WS_API_IP` trỏ đến đúng IP máy chủ Python của bạn.
