@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>🤖 Project Antigravity: AI Voice Assistant Robot</h1>
+  <h1>🤖 Project MICA: Smart Healthcare Companion</h1>
   <p><strong>Bản lề cho thế hệ Robot Nhúng tự trị (Autonomous Embedded Robotics) giao tiếp bằng Giọng nói</strong></p>
 
   <p>
@@ -14,7 +14,7 @@
 
 ## 🌟 Tầm nhìn Dự án (Vision)
 
-Đây không chỉ là một món đồ chơi điện tử lắp ráp thông thường. **Antigravity Robot** là một giải pháp nguyên mẫu cấp độ Doanh nghiệp (Enterprise-grade Prototype) nhằm chứng minh khả năng đưa AI tạo sinh (Generative AI) vào các thiết bị IoT cực nhỏ (Edge Devices) với **Độ trễ gần như bằng không (Ultra-low Latency)**.
+Đây không chỉ là một món đồ chơi điện tử lắp ráp thông thường. **MICA Robot** là một giải pháp nguyên mẫu cấp độ Doanh nghiệp (Enterprise-grade Prototype) nhằm chứng minh khả năng đưa AI tạo sinh (Generative AI) vào thiết bị chăm sóc sức khỏe thông minh (Healthcare Edge Devices) với **Độ trễ gần như bằng không (Ultra-low Latency)**.
 
 Thay vì bắt người dùng phải bấm nút để nói chuyện như bộ đàm, hệ thống sử dụng thuật toán **VAD (Voice Activity Detection)** phân tích sóng âm hoàn toàn tại bộ xử lý nhúng (Edge Computing), biến Robot thành một trợ lý luôn lắng nghe thụ động và phản hồi tức thì. 
 

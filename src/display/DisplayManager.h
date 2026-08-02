@@ -5,6 +5,7 @@
 #include "../core/ILogger.h"
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include "RoboEyes.h"
 
 class DisplayManager final : public IDisplay
 {
@@ -23,6 +24,8 @@ public:
 private:
     ILogger& logger;
     Adafruit_SSD1306 display;
+    RoboEyes<Adafruit_SSD1306> eyes;
+    bool isShowingFace;
 
     static constexpr uint8_t SCREEN_WIDTH = 128;
     static constexpr uint8_t SCREEN_HEIGHT = 64;

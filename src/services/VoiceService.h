@@ -20,6 +20,7 @@ public:
     void loop();
 
     VoiceState getState() const;
+    unsigned long getLastAudioReceiveTime() const;
 
 private:
     ILogger& logger;
@@ -29,6 +30,7 @@ private:
 
     VoiceState state;
     unsigned long lastSpeechTime;
+    unsigned long lastAudioReceiveTime;
     uint8_t chunkBuffer[1024];
 };
 

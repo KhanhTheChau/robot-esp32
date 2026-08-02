@@ -27,12 +27,12 @@ namespace AppConfig
     constexpr unsigned long SERIAL_BAUD_RATE = 115200;
 
     // Server WebSocket
-    constexpr const char* WS_API_IP = "192.168.1.2";
+    constexpr const char* WS_API_IP = "192.168.1.3";
     constexpr uint16_t WS_API_PORT = 5000;
 
     // Cấu hình VAD
-    constexpr float VAD_RMS_THRESHOLD = 500.0f; // Ngưỡng kích hoạt giọng nói
-    constexpr unsigned long VAD_SILENCE_TIMEOUT_MS = 1500; // Im lặng 1.5s là hết câu
+    constexpr float VAD_RMS_THRESHOLD = 200.0f; // Ngưỡng kích hoạt giọng nói (giảm xuống để nhạy hơn với giọng nói nhỏ)
+    constexpr unsigned long VAD_SILENCE_TIMEOUT_MS = 2000; // Im lặng 2.0s là hết câu (tăng lên để chờ người lớn tuổi nói chậm)
     constexpr int VAD_CHUNK_SIZE = 1024; // Kích thước mỗi chunk PCM gửi đi
 }
 

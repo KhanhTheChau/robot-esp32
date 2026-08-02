@@ -3,7 +3,7 @@
 #include <Arduino.h>
 
 VoiceService::VoiceService(ILogger& logger, IAudioRecorder& recorder, IAudioPlayer& player, IWebSocketClient& webSocket)
-    : logger(logger), recorder(recorder), player(player), webSocket(webSocket), state(VoiceState::SILENT), lastSpeechTime(0)
+    : logger(logger), recorder(recorder), player(player), webSocket(webSocket), state(VoiceState::SILENT), lastSpeechTime(0), lastAudioReceiveTime(0)
 {
 }
 
@@ -15,6 +15,7 @@ void VoiceService::begin()
     
     // Bind WebSocket events
     webSocket.onAudioStream([this](const uint8_t* data, size_t size) {
+        this->lastAudioReceiveTime = millis();
         this->player.write(data, size);
     });
 }
@@ -63,4 +64,9 @@ void VoiceService::loop()
 VoiceState VoiceService::getState() const
 {
     return state;
+}
+
+unsigned long VoiceService::getLastAudioReceiveTime() const
+{
+    return lastAudioReceiveTime;
 }

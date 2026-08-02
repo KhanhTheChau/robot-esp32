@@ -1,10 +1,10 @@
 #include "DisplayManager.h"
 #include "../config/AppConfig.h"
 #include <Wire.h>
-#include "GifFrames.h"
+// #include "GifFrames.h" // Removed as we use RoboEyes for idle now
 
 DisplayManager::DisplayManager(ILogger& logger)
-    : logger(logger), display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET)
+    : logger(logger), display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET), eyes(display), isShowingFace(false)
 {
 }
 
@@ -28,15 +28,22 @@ void DisplayManager::begin()
     display.setCursor(0, 0);
     display.println(F("ESP32 Audio POC"));
     display.display();
+    
+    // Khởi tạo RoboEyes
+    eyes.begin(SCREEN_WIDTH, SCREEN_HEIGHT, 50); // 50 fps max
+    eyes.setAutoblinker(ON, 3, 2);
+    eyes.setIdleMode(ON, 2, 2);
 }
 
 void DisplayManager::clear()
 {
+    isShowingFace = false;
     display.clearDisplay();
 }
 
 void DisplayManager::printText(const char* text, int x, int y)
 {
+    isShowingFace = false;
     display.setCursor(x, y);
     display.println(text);
 }
@@ -52,68 +59,50 @@ void DisplayManager::showStatus(const char* status)
 
 void DisplayManager::drawFace(const String& emotion)
 {
-    clear();
+    isShowingFace = true;
     
-    // Tọa độ tâm màn hình: 64, 32
     if (emotion == "happy")
     {
-        display.drawCircleHelper(32, 28, 12, 1, SSD1306_WHITE); 
-        display.drawCircleHelper(96, 28, 12, 1, SSD1306_WHITE);
-        display.drawCircleHelper(64, 36, 16, 2, SSD1306_WHITE);
+        eyes.setMood(HAPPY);
     }
     else if (emotion == "sad")
     {
-        display.drawLine(20, 16, 44, 24, SSD1306_WHITE);
-        display.drawLine(84, 24, 108, 16, SSD1306_WHITE);
-        display.drawCircleHelper(64, 56, 16, 1, SSD1306_WHITE);
+        eyes.setMood(TIRED); // RoboEyes dùng TIRED cho buồn/mệt
     }
     else if (emotion == "angry")
     {
-        display.drawLine(20, 12, 44, 24, SSD1306_WHITE);
-        display.drawLine(84, 24, 108, 12, SSD1306_WHITE);
-        display.fillCircle(32, 28, 6, SSD1306_WHITE);
-        display.fillCircle(96, 28, 6, SSD1306_WHITE);
-        display.drawLine(48, 48, 80, 48, SSD1306_WHITE);
+        eyes.setMood(ANGRY);
     }
     else if (emotion == "surprised")
     {
-        display.drawCircle(32, 24, 10, SSD1306_WHITE);
-        display.drawCircle(96, 24, 10, SSD1306_WHITE);
-        display.drawCircle(64, 48, 8, SSD1306_WHITE);
+        eyes.setMood(DEFAULT);
+        eyes.setCuriosity(ON); // Curious mode làm mắt to ra giống ngạc nhiên
     }
     else // neutral
     {
-        display.fillCircle(32, 24, 6, SSD1306_WHITE);
-        display.fillCircle(96, 24, 6, SSD1306_WHITE);
-        display.drawLine(54, 48, 74, 48, SSD1306_WHITE);
+        eyes.setMood(DEFAULT);
+        eyes.setCuriosity(OFF);
     }
     
-    update();
+    eyes.update();
 }
 
 void DisplayManager::playGifFrame()
 {
-    static int currentFrame = 0;
-    static unsigned long lastFrameTime = 0;
-    
-    // Phát ở tốc độ ~20fps (50ms mỗi frame)
-    if (millis() - lastFrameTime > 50) 
-    {
-        lastFrameTime = millis();
-        clear();
-        // Lấy frame hiện tại từ mảng PROGMEM và hiển thị
-        display.drawBitmap(0, 0, gif_frames[currentFrame], 128, 64, SSD1306_WHITE);
-        update();
-        
-        currentFrame++;
-        if (currentFrame >= gif_frame_count) {
-            currentFrame = 0;
-        }
+    if (!isShowingFace) {
+        isShowingFace = true;
+        eyes.setMood(DEFAULT);
+        eyes.setCuriosity(OFF);
     }
+    eyes.update();
 }
 
 void DisplayManager::update()
 {
-    display.display();
+    if (isShowingFace) {
+        eyes.update();
+    } else {
+        display.display();
+    }
 }
 

@@ -114,8 +114,25 @@ void Application::loop()
                 }
 
                 // Phát audio đang được xử lý ở nền
+                display.update(); // Keep RoboEyes animated while speaking
                 
-                if (millis() - speakingStartTime > 8000) { // Đợi 8 giây cho việc đọc text an toàn
+                bool shouldEnd = false;
+                unsigned long lastAudio = voice.getLastAudioReceiveTime();
+                
+                // Nếu chưa có audio stream nào trả về kể từ lúc bắt đầu SPEAKING (do JSON về trước Audio)
+                if (lastAudio < speakingStartTime) {
+                    if (millis() - speakingStartTime > 10000) { // Chờ tối đa 10s nếu BE lỗi không gửi audio
+                        shouldEnd = true;
+                    }
+                } 
+                // Nếu đang/đã nhận được audio stream, duy trì mặt biểu cảm thêm 2s sau tiếng cuối cùng
+                else {
+                    if (millis() - lastAudio > 2000) {
+                        shouldEnd = true;
+                    }
+                }
+                
+                if (shouldEnd) {
                     speakingStartTime = 0;
                     updateDisplayStatus();
                     currentState = AppState::IDLE;

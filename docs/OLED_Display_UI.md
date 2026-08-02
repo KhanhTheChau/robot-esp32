@@ -34,28 +34,31 @@ Trong `Application::loop()`, hàm `playGifFrame()` được thiết kế dưới
 
 ## 2. Tính năng Khuôn mặt Cảm xúc (Emotion Faces) khi AI trả lời
 
-Thay vì chỉ in câu chữ khô khan, khi AI (Gemini) bắt đầu phản hồi, Robot sẽ vẽ các khuôn mặt hình học đại diện cho cảm xúc tương ứng với nội dung câu trả lời.
+Thay vì chỉ in câu chữ khô khan, khi AI (Gemini) bắt đầu phản hồi, Robot sẽ hiển thị đôi mắt có hồn và biểu cảm thông qua thư viện đồ họa **RoboEyes** (được tùy chỉnh từ FluxGarage).
 
-### A. Quy định các Cảm xúc
-Hệ thống quy định 5 trạng thái cảm xúc cơ bản:
-1. `neutral` (Bình thường): Mắt tròn, miệng nằm ngang.
-2. `happy` (Vui vẻ): Mắt cong hình vòng cung (cười), miệng cong lên.
-3. `sad` (Buồn): Mắt cụp xuống, miệng cong xuống.
-4. `angry` (Tức giận): Mắt có lông mày nhíu lại (đường chéo), miệng ngang hoặc zíc zắc.
-5. `surprised` (Ngạc nhiên): Mắt mở to tròn, miệng hình chữ 'O' hoặc elip.
+### A. Quy định các Cảm xúc (Moods)
+Hệ thống lấy cảm xúc do LLM trả về, sau đó map (ánh xạ) sang các trạng thái Mood của thư viện `RoboEyes`:
+1. `neutral` (Bình thường): Mắt tròn ở trạng thái `DEFAULT`. Khi rảnh rỗi tự động ngó nghiêng ngẫu nhiên (`IdleMode = ON`).
+2. `happy` (Vui vẻ): Mắt thu lại hình cung cong lên trên ở trạng thái `HAPPY`.
+3. `sad` (Buồn): Mắt sụp mí rũ rượi, thể hiện trạng thái `TIRED`.
+4. `angry` (Tức giận): Mắt xếch hai góc ngoài lên cao, thể hiện trạng thái `ANGRY`.
+5. `surprised` (Ngạc nhiên): Mắt mở to tròn hết mức (`Curiosity = ON`) kết hợp trạng thái `DEFAULT`.
+
+*Đôi mắt cũng được bật tính năng tự động chớp mắt (`Autoblinker = ON`) giúp khuôn mặt trông tự nhiên và chân thực hơn.*
 
 ### B. Luồng hoạt động (Data flow)
 1. **Phía Server (Python)**: Thông qua System Prompt, Server yêu cầu Gemini phân tích câu trả lời và ép nó trả về định dạng JSON chứa trường `"emotion"`.
 2. **Phía Robot (ESP32)**:
-   - Module `WebSocketManager` sẽ bắt JSON này và parse ra.
-   - Khi chuyển sang trạng thái `SPEAKING`, `DisplayManager` sẽ không gọi `playGifFrame` nữa, mà sẽ gọi hàm `drawFace(emotion)`.
-   - Hàm `drawFace` sử dụng bộ công cụ vẽ cơ bản của thư viện `Adafruit_GFX` (như `fillCircle`, `drawLine`, `drawCircleHelper`) để ráp nên khuôn mặt tức thì.
+   - Module `WebSocketManager` bắt JSON này và giải mã.
+   - Khi chuyển sang trạng thái `SPEAKING`, `DisplayManager` sẽ cập nhật đối tượng `RoboEyes` liên tục.
+   - Tùy vào emotion nhận được, nó sẽ gọi hàm cấu hình như `eyes.setMood(HAPPY)` và để hệ thống tự động vẽ các frame tiếp theo.
+   - Khuôn mặt sẽ được duy trì hoạt ảnh ổn định (chớp mắt) xuyên suốt thời gian robot phát âm thanh. Ngay khi âm thanh kết thúc (khoảng 2s sau), khuôn mặt mới trở lại bình thường.
 
-**Ví dụ mã vẽ mắt vui vẻ (Happy):**
+**Ví dụ thiết lập mắt:**
 ```cpp
-// Mắt nhắm cong lên (vẽ nửa đường tròn trên)
-display.drawCircleHelper(32, 20, 10, 1, WHITE); // Trái
-display.drawCircleHelper(96, 20, 10, 1, WHITE); // Phải
-// Miệng cười
-display.drawCircleHelper(64, 40, 15, 2, WHITE);
+// Ánh xạ sang mắt buồn
+eyes.setMood(TIRED);
+eyes.setCuriosity(OFF);
+// Cập nhật lên màn hình (phải gọi liên tục trong loop)
+eyes.update();
 ```
