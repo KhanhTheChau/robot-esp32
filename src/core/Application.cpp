@@ -70,6 +70,10 @@ void Application::loop()
         display.clear(); // Xóa màn hình để mất chữ Connecting Server
         display.update();
         wasConnected = true;
+        
+        // Luôn đưa state về IDLE khi kết nối lại, phòng hờ bị kẹt ở PROCESSING do rớt mạng
+        currentState = AppState::IDLE;
+        
     } else if (!currentConnected && wasConnected) {
         wasConnected = false;
     }
@@ -105,6 +109,7 @@ void Application::loop()
                 {
                     logger.info("Transitioning to PROCESSING...");
                     currentState = AppState::PROCESSING;
+                    _processStartTime = millis();
                     // display.showStatus("Processing...");
                 }
                 break;
@@ -115,7 +120,11 @@ void Application::loop()
                 // Hiển thị mặt lúc chờ đợi (đã bỏ chữ Processing)
                 display.playGifFrame();
                 
-                // Chờ callback onVoiceResult từ WebSocket đổi state
+                // Timeout chống kẹt vĩnh viễn nếu Server không bao giờ trả lời
+                if (millis() - _processStartTime > 15000) {
+                    logger.warning("Processing timeout! Reset to IDLE.");
+                    currentState = AppState::IDLE;
+                }
                 break;
             }
 

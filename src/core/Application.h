@@ -38,6 +38,7 @@ private:
         SPEAKING
     };
     AppState currentState;
+    unsigned long _processStartTime = 0;
 
     void updateDisplayStatus();
 };
