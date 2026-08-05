@@ -1,0 +1,11 @@
+# Môi trường ảo
+venv/
+env/
+.env
+
+# Cache
+__pycache__/
+*.pyc
+
+# Cache âm thanh
+audio_cache/
