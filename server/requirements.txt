@@ -1,0 +1,5 @@
+websockets
+SpeechRecognition
+google-generativeai
+edge-tts
+python-dotenv
