@@ -7,6 +7,7 @@ class VoiceResult
 {
 public:
     bool success;
+    String action;
     String text;
     String intent;
     float confidence;

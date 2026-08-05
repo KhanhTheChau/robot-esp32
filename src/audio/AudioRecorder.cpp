@@ -60,11 +60,27 @@ void AudioRecorder::initI2S()
 
 size_t AudioRecorder::readAudioChunk(uint8_t* buffer, size_t maxLen)
 {
+    if (_isPaused) {
+        return 0; // Không đọc dữ liệu khi đang bị pause (ví dụ đang phát TTS)
+    }
+
     size_t bytesRead = 0;
     // Dùng timeout 50ms để đợi đủ 1024 bytes (chiếm 32ms ở 16kHz)
     // Điều này sẽ không block hoàn toàn mạch nhưng đảm bảo lấy đủ mẫu để tính RMS chính xác.
     i2s_read(I2S_PORT, buffer, maxLen, &bytesRead, 50 / portTICK_PERIOD_MS);
     return bytesRead;
+}
+
+void AudioRecorder::pause()
+{
+    _isPaused = true;
+    // Có thể dọn dẹp I2S queue nếu cần thiết, ví dụ: i2s_zero_dma_buffer(I2S_PORT);
+}
+
+void AudioRecorder::resume()
+{
+    _isPaused = false;
+    i2s_zero_dma_buffer(I2S_PORT); // Xóa buffer rác trong I2S DMA
 }
 
 float AudioRecorder::calculateRMS(const uint8_t* buffer, size_t len)

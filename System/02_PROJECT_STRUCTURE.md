@@ -12,6 +12,8 @@ config/
 core/
     Application.h
     Application.cpp
+    ConversationStateManager.h
+    ConversationStateManager.cpp
 
     ILogger.h
     Logger.h
@@ -28,23 +30,27 @@ display/
     DisplayManager.cpp
 
 network/
-    IHttpClient.h
-    HttpClient.h
-    HttpClient.cpp
+    IWebSocketClient.h
+    WebSocketManager.h
+    WebSocketManager.cpp
 
 button/
     IButton.h
     ButtonManager.h
     ButtonManager.cpp
 
-sensor/
-    ISensor.h
+audio/
+    IAudioRecorder.h
+    AudioRecorder.h
+    AudioRecorder.cpp
+    IAudioPlayer.h
+    AudioPlayer.h
+    AudioPlayer.cpp
 
 utils/
 
 models/
-
-services/
+    VoiceResult.h
 ```
 
 ---

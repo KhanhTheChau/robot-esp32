@@ -73,7 +73,8 @@ void WebSocketManager::webSocketEvent(WStype_t type, uint8_t * payload, size_t l
                 DeserializationError error = deserializeJson(doc, payload);
                 if (!error) {
                     VoiceResult result;
-                    result.success = doc["success"] | false;
+                    result.success = doc.containsKey("success") ? doc["success"].as<bool>() : true;
+                    result.action = doc.containsKey("action") ? doc["action"].as<const char*>() : "";
                     result.text = doc.containsKey("text") ? doc["text"].as<const char*>() : "";
                     result.intent = doc.containsKey("intent") ? doc["intent"].as<const char*>() : "";
                     result.confidence = doc["confidence"] | 0.0f;

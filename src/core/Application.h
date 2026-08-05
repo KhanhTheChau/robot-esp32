@@ -5,7 +5,7 @@
 #include "../wifi/IWiFiManager.h"
 #include "../display/IDisplay.h"
 #include "../button/IButton.h"
-#include "../services/VoiceService.h"
+#include "ConversationStateManager.h"
 #include "../network/IWebSocketClient.h"
 
 class Application final
@@ -16,7 +16,7 @@ public:
         IWiFiManager& wifi,
         IDisplay& display,
         IButton& button,
-        VoiceService& voice,
+        ConversationStateManager& conversationManager,
         IWebSocketClient& webSocket
     );
 
@@ -28,7 +28,7 @@ private:
     IWiFiManager& wifi;
     IDisplay& display;
     IButton& button;
-    VoiceService& voice;
+    ConversationStateManager& conversationManager;
     IWebSocketClient& webSocket;
 
     enum class AppState {

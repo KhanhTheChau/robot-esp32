@@ -46,7 +46,7 @@ sequenceDiagram
     
     U->>E: Bắt đầu nói chuyện
     E->>E: Tính toán RMS vượt ngưỡng (VAD Trigger)
-    Note over E: Chuyển State: LISTENING
+    Note over E: Chuyển State: LISTENING (VAD)
     
     loop Đang nói
         E->>S: Gửi các đoạn Audio PCM 16-bit qua WebSocket (BIN)
@@ -57,13 +57,16 @@ sequenceDiagram
     Note over E: Chuyển State: PROCESSING
     E->>S: Gửi JSON báo hiệu kết thúc câu: {"action": "end_of_speech"}
     
+    S->>S: Kiểm tra State. Nếu AWAKE -> Gửi action: "THINKING"
+    S->>E: Gửi JSON: {"action": "THINKING"} và Stream Audio "Đang suy nghĩ..."
+    
     S->>S: Gửi toàn bộ Audio Buffer lên Google STT
     S->>A: Gửi Text lên Gemini để lấy câu trả lời & Cảm xúc
     A-->>S: Trả về JSON (Text, Emotion)
     
-    S->>E: Gửi JSON Cảm xúc & Bắt đầu tạo TTS
+    S->>E: Gửi JSON Cảm xúc {"action": "CHAT_RESPONSE", "emotion": ...}
     Note over E: OLED thay đổi khuôn mặt dựa theo Cảm xúc
-    Note over E: Chuyển State: SPEAKING
+    Note over E: Chuyển State: SPEAKING (Tạm dừng VAD)
     
     S->>S: Gửi Text lên Edge-TTS
     S->>S: FFmpeg convert mp3 sang luồng PCM
@@ -73,7 +76,7 @@ sequenceDiagram
         E->>E: MAX98357 phát âm thanh ra loa
     end
     
-    Note over E: Kết thúc chu kỳ (Timeout 8s). Chuyển về IDLE.
+    Note over E: Kết thúc chu kỳ (Không còn Audio). Mở lại VAD.
 ```
 
 ## 3. Lý do sử dụng WebSocket Streaming thay vì HTTP REST

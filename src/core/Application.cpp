@@ -6,9 +6,9 @@ Application::Application(
     IWiFiManager& wifi,
     IDisplay& display,
     IButton& button,
-    VoiceService& voice,
+    ConversationStateManager& conversationManager,
     IWebSocketClient& webSocket
-) : logger(logger), wifi(wifi), display(display), button(button), voice(voice), webSocket(webSocket), currentState(AppState::IDLE)
+) : logger(logger), wifi(wifi), display(display), button(button), conversationManager(conversationManager), webSocket(webSocket), currentState(AppState::IDLE)
 {
 }
 
@@ -21,22 +21,22 @@ void Application::begin()
     button.begin();
     wifi.begin();
     webSocket.begin();
-    voice.begin();
+    conversationManager.begin();
 
-    webSocket.onVoiceResult([this](const VoiceResult& result) {
-        if (result.success) {
-            logger.info("Server responded with AI reply.");
+    conversationManager.setVoiceResultCallback([this](const VoiceResult& result) {
+        if (result.action == "ERROR") {
             display.clear();
-            display.drawFace(result.emotion);
-            currentState = AppState::SPEAKING;
-        } else {
-            logger.error("Server error.");
-            display.clear();
-            display.printText("Error from server", 0, 0);
-            display.update();
-            delay(2000);
-            updateDisplayStatus();
+            display.playGifFrame();
             currentState = AppState::IDLE;
+        }
+        else if (result.action == "CHAT_RESPONSE" || result.action == "THINKING" || result.action == "WAKE_UP" || result.action == "GO_TO_SLEEP") {
+            display.clear();
+            if (result.action == "THINKING") {
+                display.playGifFrame(); // Bỏ chữ Processing
+            } else {
+                display.drawFace(result.emotion);
+            }
+            currentState = AppState::SPEAKING;
         }
     });
 
@@ -62,80 +62,80 @@ void Application::loop()
     button.loop();
     webSocket.loop();
 
-    if (wifi.isConnected() && webSocket.isConnected())
+    bool currentConnected = wifi.isConnected() && webSocket.isConnected();
+    static bool wasConnected = false;
+
+    if (currentConnected && !wasConnected) {
+        logger.info("System fully connected!");
+        display.clear(); // Xóa màn hình để mất chữ Connecting Server
+        display.update();
+        wasConnected = true;
+    } else if (!currentConnected && wasConnected) {
+        wasConnected = false;
+    }
+
+    if (currentConnected)
     {
         switch (currentState)
         {
             case AppState::IDLE:
             {
+                // Chỉ hiển thị mặt, bỏ chữ Waiting
                 display.playGifFrame();
-                voice.loop(); // VAD liên tục chạy
                 
-                if (voice.getState() == VoiceState::SPEAKING)
+                conversationManager.loop(); // VAD liên tục chạy
+                
+                if (conversationManager.isUserSpeaking())
                 {
                     logger.info("Transitioning to LISTENING...");
                     currentState = AppState::LISTENING;
-                    display.showStatus("Listening...");
+                    // display.showStatus("Listening...");
                 }
                 break;
             }
 
             case AppState::LISTENING:
             {
-                // Nhấp nháy chữ Listening
-                if ((millis() / 500) % 2 == 0) {
-                    display.showStatus("Listening [*]");
-                } else {
-                    display.showStatus("Listening [ ]");
-                }
+                // Chỉ hiển thị mặt, bỏ chữ Listening
+                display.playGifFrame();
 
-                voice.loop(); // Tiếp tục thu âm và gửi WebSocket
+                conversationManager.loop(); // Tiếp tục thu âm và gửi WebSocket
                 
-                if (voice.getState() == VoiceState::SILENT)
+                if (!conversationManager.isUserSpeaking())
                 {
                     logger.info("Transitioning to PROCESSING...");
                     currentState = AppState::PROCESSING;
-                    display.showStatus("Processing...");
+                    // display.showStatus("Processing...");
                 }
                 break;
             }
             
             case AppState::PROCESSING:
             {
+                // Hiển thị mặt lúc chờ đợi (đã bỏ chữ Processing)
+                display.playGifFrame();
+                
                 // Chờ callback onVoiceResult từ WebSocket đổi state
                 break;
             }
 
             case AppState::SPEAKING:
             {
-                static unsigned long speakingStartTime = 0;
-                if (speakingStartTime == 0) {
-                    speakingStartTime = millis();
-                }
+                conversationManager.loop(); // Cho phép state manager chạy để checkRobotSpeakingState()
 
-                // Phát audio đang được xử lý ở nền
                 display.update(); // Keep RoboEyes animated while speaking
                 
-                bool shouldEnd = false;
-                unsigned long lastAudio = voice.getLastAudioReceiveTime();
-                
-                // Nếu chưa có audio stream nào trả về kể từ lúc bắt đầu SPEAKING (do JSON về trước Audio)
-                if (lastAudio < speakingStartTime) {
-                    if (millis() - speakingStartTime > 10000) { // Chờ tối đa 10s nếu BE lỗi không gửi audio
-                        shouldEnd = true;
+                if (!conversationManager.isRobotSpeaking()) {
+                    // Robot đã phát xong âm thanh
+                    static unsigned long waitEndTime = 0;
+                    if (waitEndTime == 0) {
+                        waitEndTime = millis();
                     }
-                } 
-                // Nếu đang/đã nhận được audio stream, duy trì mặt biểu cảm thêm 2s sau tiếng cuối cùng
-                else {
-                    if (millis() - lastAudio > 2000) {
-                        shouldEnd = true;
+                    if (millis() - waitEndTime > 1000) { // Đợi thêm 1s sau khi nói xong
+                        waitEndTime = 0;
+                        updateDisplayStatus();
+                        currentState = AppState::IDLE;
                     }
-                }
-                
-                if (shouldEnd) {
-                    speakingStartTime = 0;
-                    updateDisplayStatus();
-                    currentState = AppState::IDLE;
                 }
                 break;
             }

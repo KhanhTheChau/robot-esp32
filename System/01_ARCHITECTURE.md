@@ -56,14 +56,15 @@ AudioRecorder recorder(logger);
 
 AudioPlayer player(logger);
 
+ConversationStateManager conversationManager(logger, recorder, player, webSocketManager);
+
 Application app(
     logger,
     wifi,
     display,
     http,
     button,
-    recorder,
-    player
+    conversationManager
 );
 ```
 

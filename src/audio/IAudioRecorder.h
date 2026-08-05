@@ -15,6 +15,9 @@ public:
     
     // Tính toán RMS
     virtual float calculateRMS(const uint8_t* buffer, size_t len) = 0;
+    
+    virtual void pause() = 0;
+    virtual void resume() = 0;
 };
 
 #endif // IAUDIO_RECORDER_H

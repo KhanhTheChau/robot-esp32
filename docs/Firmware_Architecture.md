@@ -11,11 +11,12 @@ Nằm ở `src/core/Application.cpp`. Đây là "Tổng tư lệnh" của hệ t
 - **`PROCESSING`**: Gửi cờ kết thúc (end_of_speech) và chờ đợi Server phản hồi.
 - **`SPEAKING`**: Chặn VAD không cho thu âm (tránh Acoustic Echo), hiển thị khuôn mặt cảm xúc (`drawFace`), và đợi quá trình phát âm thanh từ loa kết thúc (sau 8s timeout).
 
-## 2. VoiceService (Điều phối viên)
-Nằm ở `src/services/VoiceService.cpp`. Nhận trách nhiệm liên kết phần cứng Âm thanh (Audio) và Mạng (WebSocket).
-- Nó có hàm `loop()` chạy liên tục để đọc từng khối 1024 bytes từ Micro.
+## 2. ConversationStateManager (Bộ Quản lý Trạng thái Hội thoại)
+Nằm ở `src/core/ConversationStateManager.cpp`. Nhận trách nhiệm liên kết phần cứng Âm thanh (Audio) và Mạng (WebSocket).
+- Có vòng lặp `loop()` gọi hàm đọc dữ liệu từ Micro.
 - Tính toán RMS. Nếu lớn hơn ngưỡng, tự động gọi `webSocket.sendAudioChunk()`.
-- Nếu cường độ chìm xuống dưới ngưỡng trong 1.5 giây, nó cập nhật state thành `SILENT` để `Application` biết và ngắt câu.
+- Giao tiếp với Server bằng JSON (`WAKE_UP`, `THINKING`, `CHAT_RESPONSE`, `GO_TO_SLEEP`). Quản lý trạng thái `SLEEP` (chỉ kiểm tra wake word) và `AWAKE`.
+- Ngắt Micro (pause VAD) khi Robot đang phát âm thanh để chống Echo.
 
 ## 3. WebSocketManager (Mạng lưới)
 Nằm ở `src/network/WebSocketManager.cpp`. Quản lý toàn bộ giao tiếp 2 chiều với Server Python.

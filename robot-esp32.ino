@@ -6,7 +6,7 @@
 #include "src/audio/AudioRecorder.h"
 #include "src/audio/AudioPlayer.h"
 #include "src/network/WebSocketManager.h"
-#include "src/services/VoiceService.h"
+#include "src/core/ConversationStateManager.h"
 #include "src/core/Application.h"
 
 // 1. Khởi tạo các Core Component
@@ -21,7 +21,7 @@ AudioPlayer audioPlayer(logger);
 WebSocketManager webSocketManager(logger, wifiManager);
 
 // 3. Khởi tạo các Service
-VoiceService voiceService(logger, audioRecorder, audioPlayer, webSocketManager);
+ConversationStateManager conversationManager(logger, audioRecorder, audioPlayer, webSocketManager);
 
 // 4. Khởi tạo Application (Root của Dependency Injection)
 Application app(
@@ -29,7 +29,7 @@ Application app(
     wifiManager,
     displayManager,
     buttonManager,
-    voiceService,
+    conversationManager,
     webSocketManager
 );
 

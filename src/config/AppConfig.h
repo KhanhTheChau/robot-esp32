@@ -27,7 +27,7 @@ namespace AppConfig
     constexpr unsigned long SERIAL_BAUD_RATE = 115200;
 
     // Server WebSocket
-    constexpr const char* WS_API_IP = "192.168.1.3";
+    constexpr const char* WS_API_IP = "192.168.1.14";
     constexpr uint16_t WS_API_PORT = 5000;
 
     // Cấu hình VAD
