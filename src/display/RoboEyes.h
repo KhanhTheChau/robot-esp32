@@ -81,7 +81,11 @@ bool curious = 0; // if true, draw the outer eye larger when looking left or rig
 bool cyclops = 0; // if true, draw only one eye
 bool eyeL_open = 0; // left eye opened or closed?
 bool eyeR_open = 0; // right eye opened or closed?
+bool speaking = 0; // is the robot speaking?
 
+void setSpeaking(bool s) {
+    speaking = s;
+}
 
 //*********************************************************************************************
 //  Eyes Geometry
@@ -708,6 +712,29 @@ void drawEyes(){
       else {sweat3Width-=0.1; sweat3Height-=0.5;} // ... and shrinks in second half of animation
       sweat3XPos = sweat3XPosInitial-(sweat3Width/2); // keep the growing shape centered to initial x position
       display->fillRoundRect(sweat3XPos, sweat3YPos, sweat3Width, sweat3Height, sweatBorderradius, MAINCOLOR); // draw sweat drop
+    }
+
+    if (speaking) {
+      int mouthWidth = 10 + (millis() % 16); // Dao động 10 -> 25
+      int mouthHeight = 2 + (millis() % 12); // Dao động 2 -> 14
+      
+      // Tính tâm điểm của khuôn mặt dựa vào tọa độ 2 mắt hiện tại
+      int faceCenterX;
+      if (cyclops) {
+          faceCenterX = eyeLx + (eyeLwidthCurrent / 2);
+      } else {
+          faceCenterX = (eyeLx + eyeRx + eyeRwidthCurrent) / 2;
+      }
+      
+      int mouthX = faceCenterX - (mouthWidth / 2);
+      int mouthY = eyeLy + eyeLheightDefault + 4; // Luôn nằm ngay dưới mắt 4 pixel
+      
+      // Chống tràn viền màn hình dưới
+      if (mouthY + mouthHeight > screenHeight) {
+          mouthY = screenHeight - mouthHeight;
+      }
+      
+      display->fillRoundRect(mouthX, mouthY, mouthWidth, mouthHeight, 2, MAINCOLOR);
     }
 
   display->display(); // show drawings on display

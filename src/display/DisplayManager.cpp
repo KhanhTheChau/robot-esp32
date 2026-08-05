@@ -106,3 +106,8 @@ void DisplayManager::update()
     }
 }
 
+void DisplayManager::setSpeaking(bool isSpeaking)
+{
+    eyes.setSpeaking(isSpeaking);
+}
+

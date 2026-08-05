@@ -15,6 +15,7 @@ public:
     virtual void drawFace(const String& emotion) = 0;
     virtual void playGifFrame() = 0;
     virtual void update() = 0;
+    virtual void setSpeaking(bool isSpeaking) = 0;
 };
 
 #endif // IDISPLAY_H

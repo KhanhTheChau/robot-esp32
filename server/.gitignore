@@ -9,3 +9,6 @@ __pycache__/
 
 # Cache âm thanh
 audio_cache/
+
+# Lịch sử trò chuyện
+chat_history.log

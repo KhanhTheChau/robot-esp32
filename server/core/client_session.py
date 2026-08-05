@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import websockets
+from datetime import datetime
 from core.stt_engine import STTEngine
 from core.llm_engine import LLMEngine
 from core.tts_engine import TTSEngine
@@ -18,7 +19,19 @@ class ClientSession:
         
         self.audio_buffer = bytearray()
         self.state = "SLEEP"  # SLEEP or AWAKE
+        self.log_file = "chat_history.log"
         
+    def log_conversation(self, user_text: str, robot_text: str, emotion: str = ""):
+        try:
+            with open(self.log_file, "a", encoding="utf-8") as f:
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                emotion_str = f" ({emotion})" if emotion else ""
+                f.write(f"[{timestamp}] Ngoại: \"{user_text}\"\n")
+                f.write(f"[{timestamp}] Cháu{emotion_str}: \"{robot_text}\"\n")
+                f.write("-" * 50 + "\n")
+        except Exception as e:
+            logging.error(f"Failed to write log: {e}")
+            
     async def start(self):
         try:
             async for message in self.websocket:
@@ -54,13 +67,22 @@ class ClientSession:
             return
             
         logging.info(f"Streaming audio to ESP32: {file_path}")
+        start_time = asyncio.get_event_loop().time()
+        bytes_sent = 0
+        
         with open(file_path, "rb") as f:
             while True:
                 chunk = f.read(1024)
                 if not chunk:
                     break
                 await self.websocket.send(chunk)
-                await asyncio.sleep(0.01) # Prevent network buffer overflow
+                bytes_sent += len(chunk)
+                
+                # Điều tiết tốc độ gửi chính xác theo thời gian thực (32000 bytes/s cho 16kHz 16-bit Mono)
+                expected_time = bytes_sent / 32000.0
+                elapsed_time = asyncio.get_event_loop().time() - start_time
+                if expected_time > elapsed_time:
+                    await asyncio.sleep(expected_time - elapsed_time)
 
     async def process_audio(self):
         pcm_data = bytes(self.audio_buffer)
@@ -93,19 +115,23 @@ class ClientSession:
                 "action": "THINKING",
                 "text": phrase_text
             }))
-            await self.stream_audio_file(audio_path, wav_path)
+            
+            # Chạy ngầm việc phát âm thanh "đang suy nghĩ" để Server tranh thủ gọi STT và LLM
+            thinking_task = asyncio.create_task(self.stream_audio_file(audio_path, wav_path))
             
             # 2. Chuyển giọng nói thành văn bản
             text = await self.stt.recognize_audio(pcm_data)
             if not text:
-                # Nếu không nghe rõ, gửi ERROR để ESP32 về lại IDLE
+                await thinking_task # Đợi nói xong câu suy nghĩ
                 await self.websocket.send(json.dumps({"action": "ERROR"}))
                 return
                 
             if self.stt.contains_sleep_word(text):
+                await thinking_task # Đợi nói xong câu suy nghĩ
                 logging.info("Sleep word detected locally! Bypassing LLM. Switching to SLEEP.")
                 self.state = "SLEEP"
                 gb_text, gb_audio, gb_wav = self.phrase.get_random_phrase_audio("goodbye")
+                self.log_conversation(text, gb_text, "goodbye")
                 await self.websocket.send(json.dumps({
                     "action": "GO_TO_SLEEP",
                     "text": gb_text
@@ -115,6 +141,10 @@ class ClientSession:
 
             # 3. Phân tích ngữ nghĩa qua LLM
             ai_response, ai_emotion = await self.llm.generate_response(text)
+            self.log_conversation(text, ai_response, ai_emotion)
+            
+            # Chắc chắn rằng câu "đang suy nghĩ" đã phát xong trước khi nói câu trả lời (tránh chèn ép âm thanh)
+            await thinking_task
             
             # Dự phòng LLM vẫn có thể trả về goodbye nếu câu nói lắt léo
             if ai_emotion.lower() == "goodbye":

@@ -20,6 +20,7 @@ public:
     void drawFace(const String& emotion) override;
     void playGifFrame() override;
     void update() override;
+    void setSpeaking(bool isSpeaking) override;
 
 private:
     ILogger& logger;

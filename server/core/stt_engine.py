@@ -19,12 +19,12 @@ class STTEngine:
         ]
         
         self.sleep_words = [
-            "ngủ đi", "ngủ thôi", "đi ngủ", "tạm biệt", "bye", "bái bai", 
+            "ngủ đi", "ngủ thôi", "đi ngủ", "tạm biệt", "bye", "bái bai", "bai con nhé", "bai con nha",
             "thôi nghỉ", "vậy nha", "chào cháu", "cám ơn cháu", "nghỉ ngơi", "stop", "dừng",
             "hẹn gặp lại", "cút", "im đi", "nín đi", "không nói chuyện nữa", "đừng nói nữa", 
             "kết thúc", "chào nha", "tắt máy", "thoát", "end", "quit", "thôi nha", 
             "đi nghỉ đây", "không cần nữa", "bai bai", "bye bye", "tạm biệt nha", "ngủ ngon", "chúc ngủ ngon", "chúc ngoại ngủ ngon",
-            "chúc con ngủ ngon", "chúc cháu ngủ ngon", "chúc mọi người ngủ ngon", "chúc cả nhà ngủ ngon", "chúc cả nhà ngủ ngon nha", "chúc cả nhà ngủ ngon nhé", "chúc cả nhà ngủ ngon nha ngoại", "chúc cả nhà ngủ ngon nhé ngoại"
+            "chúc con ngủ ngon", "chúc cháu ngủ ngon", "ngoại mệt rồi", "ngoại nghĩ nha", "nghĩ nha", "ngoại nghỉ nha", "nghỉ nha",
         ]
         
     async def recognize_audio(self, pcm_data: bytes) -> str:

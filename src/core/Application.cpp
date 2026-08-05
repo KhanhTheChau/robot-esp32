@@ -27,6 +27,7 @@ void Application::begin()
         if (result.action == "ERROR") {
             display.clear();
             display.playGifFrame();
+            display.setSpeaking(false); // Phải tắt miệng nếu bị ngắt ngang do lỗi
             currentState = AppState::IDLE;
         }
         else if (result.action == "CHAT_RESPONSE" || result.action == "THINKING" || result.action == "WAKE_UP" || result.action == "GO_TO_SLEEP") {
@@ -132,9 +133,11 @@ void Application::loop()
             {
                 conversationManager.loop(); // Cho phép state manager chạy để checkRobotSpeakingState()
 
-                display.update(); // Keep RoboEyes animated while speaking
+                bool isCurrentlySpeaking = conversationManager.isRobotSpeaking();
+                display.setSpeaking(isCurrentlySpeaking);
+                display.update(); // Keep RoboEyes animated and mouth moving while speaking
                 
-                if (!conversationManager.isRobotSpeaking()) {
+                if (!isCurrentlySpeaking) {
                     // Robot đã phát xong âm thanh
                     static unsigned long waitEndTime = 0;
                     if (waitEndTime == 0) {
@@ -142,7 +145,7 @@ void Application::loop()
                     }
                     if (millis() - waitEndTime > 1000) { // Đợi thêm 1s sau khi nói xong
                         waitEndTime = 0;
-                        updateDisplayStatus();
+                        display.setSpeaking(false);
                         currentState = AppState::IDLE;
                     }
                 }
